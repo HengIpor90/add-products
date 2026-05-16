@@ -1,0 +1,32 @@
+[
+    {
+        "name": "Xtreme Play",
+        "description": "Fast gaming phone",
+        "price": 800.0,
+        "stock": 9
+    },
+    {
+        "name": "Cappuccino",
+        "description": "Healthy coffee drink",
+        "price": 1.5,
+        "stock": 10
+    },
+    {
+        "name": "matcha",
+        "description": "green tea powder",
+        "price": 2.5,
+        "stock": 10
+    },
+    {
+        "name": "Americano",
+        "description": "Strong hot coffee",
+        "price": 7.0,
+        "stock": 12
+    },
+    {
+        "name": "Strawberry",
+        "description": "Sweet juicy fruit",
+        "price": 200.0,
+        "stock": 12
+    }
+]

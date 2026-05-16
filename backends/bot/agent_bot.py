@@ -1,184 +1,127 @@
 from dotenv import load_dotenv
 import os
-import qrcode
+import json
+import re
 
 from langchain_core.messages import HumanMessage
 from langchain_groq import ChatGroq
 
-from bakong_khqr import KHQR # pyright: ignore[reportMissingImports]
-
-# =========================
-# LOAD ENV
-# =========================
 load_dotenv()
-
-GROQ_API = os.getenv("GROQ_API_KEY")
-BAKONG_TOKEN = os.getenv("BAKONG_TOKEN")
 
 # =========================
 # AI MODEL
 # =========================
 model = ChatGroq(
     model="llama-3.3-70b-versatile",
-    api_key=GROQ_API,
-    temperature=0.3,
+    api_key=os.getenv("GROQ_API_KEY"),
+    temperature=0.7,
     max_tokens=200
 )
 
 # =========================
-# KHQR INIT
+# FILE PATH
 # =========================
-khqr = KHQR(BAKONG_TOKEN)
+FILE_NAME = "products.json"
 
 # =========================
-# PRODUCTS
+# LOAD JSON FILE
 # =========================
-products = {
-    "iphone 15": 999,
-    "samsung s24": 850,
-    "macbook pro": 1999
-}
+def load_data():
+    if not os.path.exists(FILE_NAME):
+        return []
+    with open(FILE_NAME, "r") as f:
+        return json.load(f)
 
 # =========================
-# STATE
+# SAVE JSON FILE
 # =========================
-state = {
-    "product": None,
-    "step": "chat"
-}
+def save_data(data):
+    with open(FILE_NAME, "w") as f:
+        json.dump(data, f, indent=4)
 
 # =========================
-# QR GENERATOR (FALLBACK)
+# EXTRACT JSON FROM AI
 # =========================
-def generate_qr(product, price):
-    data = f"KHQR PAYMENT\n{product}\n${price}"
-    img = qrcode.make(data)
-    file = "khqr.png"
-    img.save(file)
-    return file
+def extract_json(text):
+    try:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+    except:
+        return None
+    return None
 
 # =========================
-# CHATBOT START
+# AI GENERATE PRODUCT
 # =========================
-print("🤖 FT AI SHOP STARTED")
+def generate_product(user_text):
+
+    prompt = f"""
+Return ONLY JSON:
+
+{{
+  "name": "product name",
+  "description": "short description max 20 words"
+}}
+
+User: {user_text}
+"""
+
+    res = model.invoke([HumanMessage(content=prompt)])
+
+    return extract_json(res.content)
+
+# =========================
+# MAIN
+# =========================
+print("🤖 AI PRODUCT SYSTEM WITH SAVE FILE")
 
 while True:
 
-    user = input("\nYou: ").lower()
+    user = input("\nEnter idea: ")
 
-    if user == "quit":
+    if user.lower() == "quit":
         break
 
     # =========================
-    # AI CHAT (DEFAULT)
+    # LOAD EXISTING DATA
     # =========================
-    def ai_reply(text):
-        response = model.invoke([HumanMessage(content=text)])
-        return response.content
+    products = load_data()
 
     # =========================
-    # FIND PRODUCT
+    # AI GENERATE
     # =========================
-    found = None
-    for p in products:
-        if p in user:
-            found = p
-            break
+    product = generate_product(user)
 
-    # =========================
-    # STEP 1: PRODUCT FOUND
-    # =========================
-    if found and state["step"] == "chat":
-
-        state["product"] = found
-        state["step"] = "buy"
-
-        print(f"""
-Agent:
-Product: {found}
-Price: ${products[found]}
-
-Do you want to buy it? (yes/no)
-""")
+    if not product:
+        print("❌ AI failed")
         continue
 
     # =========================
-    # STEP 2: BUY CONFIRM
+    # ADMIN INPUT
     # =========================
-    if state["step"] == "buy":
+    price = float(input("💰 Enter price: "))
+    stock = int(input("📦 Enter stock: "))
 
-        if "yes" in user:
-
-            state["step"] = "payment"
-
-            print("""
-Agent:
-Purchase confirmed!
-
-Choose payment method:
-- KHQR
-- Credit Card
-""")
-            continue
-
-        else:
-
-            state["step"] = "chat"
-            state["product"] = None
-
-            print("Agent: Cancelled.")
-            continue
+    final_product = {
+        "name": product["name"],
+        "description": product["description"],
+        "price": price,
+        "stock": stock
+    }
 
     # =========================
-    # STEP 3: PAYMENT
+    # ADD TO LIST
     # =========================
-    if state["step"] == "payment":
-
-        product = state["product"]
-        price = products[product]
-
-        # KHQR PAYMENT
-        if "khqr" in user:
-
-            try:
-                result = khqr.create_qr(
-                    bank_account="hengipor_soth1@bkrt",
-                    merchant_name="FT AI Shop",
-                    merchant_city="Phnom Penh",
-                    amount=price,
-                    currency="KHR",
-                    store_label="FT AI",
-                    phone_number="012579543",
-                    bill_number="FTX001",
-                    terminal_label="AI POS",
-                    static=False
-                )
-
-                print("\nAgent: KHQR Generated Successfully")
-                print(result)
-
-            except Exception:
-                file = generate_qr(product, price)
-                print(f"Agent: QR fallback generated -> {file}")
-
-            state["step"] = "chat"
-            state["product"] = None
-            continue
-
-        elif "credit" in user:
-            print("Agent: Credit card payment selected (demo mode).")
-            continue
-
-        else:
-            print("Agent: Please choose KHQR or Credit Card.")
-            continue
+    products.append(final_product)
 
     # =========================
-    # NORMAL AI CHAT
+    # SAVE FILE
     # =========================
-    try:
-        reply = ai_reply(user)
-        print("Agent:", reply)
+    save_data(products)
 
-    except Exception as e:
-        print("Error:", e)
+    print("\n✅ SAVED SUCCESSFULLY!")
+    print("📁 File: products.json")
+
+    print("\n📦 CURRENT PRODUCT:")
+    print(json.dumps(final_product, indent=4))
