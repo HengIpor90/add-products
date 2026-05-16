@@ -1,0 +1,7 @@
+{
+    "debug.enableStatusBarColor": false,
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "files.readonlyInclude": {
+        "{**/.c4z/.extsrcs/*.PROTSYM.cbl,**/.c4z/.extsrcs/*.PROTSYM.listing}": true
+    }
+}

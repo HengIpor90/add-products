@@ -1,0 +1,42 @@
+name: Multi-Project Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+    # កំណត់ឱ្យ Run តែពេលមានការកែប្រែក្នុង Folder ទាំងនេះ
+    paths:
+      - 'payments/**'
+      - 'cafe_signal/**'
+
+jobs:
+  # Job សម្រាប់ Folder Payments (Node.js)
+  deploy-payments:
+    if: contains(github.event.head_commit.message, 'payments') || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./payments
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install & Build Payments
+        run: |
+          npm install
+          npm run build --if-present
+
+  # Job សម្រាប់ Folder Cafe Signal (Flutter/Node)
+  deploy-cafe:
+    if: contains(github.event.head_commit.message, 'cafe') || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cafe_signal
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Environment
+        run: echo "Setting up Cafe Signal Build..."
+      # បន្ថែមជំហាន Build សម្រាប់ Flutter ឬ Node នៅទីនេះ
